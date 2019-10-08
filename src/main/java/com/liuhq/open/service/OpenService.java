@@ -93,16 +93,11 @@ public class OpenService {
 			String result = page.getWebResponse().getContentAsString();
 			JSONArray dataJSONArray = JSONObject.parseObject(result).getJSONArray("data");
 			dataJSONArray.stream().map(dataJSON -> JSONObject.parseObject(JSON.toJSONString(dataJSON)))
-					.forEach(data -> {
-						JSONArray detailJSONArray = data.getJSONArray("Data");
-						detailJSONArray.stream()
-								.map(detailJSON -> JSONObject.parseObject(JSON.toJSONString(detailJSON)))
-								.forEach(detail -> {
-									list.add(CourseVo.builder().courseName(data.getString("CourseName"))
-											.exerciseName(detail.getString("ExerciseName"))
-											.studentHomeworkId(detail.getString("studentHomeworkId")).build());
-								});
-					});
+					.forEach(data -> data.getJSONArray("Data").stream()
+							.map(detailJSON -> JSONObject.parseObject(JSON.toJSONString(detailJSON)))
+							.forEach(detail -> list.add(CourseVo.builder().courseName(data.getString("CourseName"))
+									.exerciseName(detail.getString("ExerciseName"))
+									.studentHomeworkId(detail.getString("studentHomeworkId")).build())));
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
