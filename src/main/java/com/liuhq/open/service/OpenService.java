@@ -22,32 +22,40 @@ import com.google.common.collect.Maps;
 import com.liuhq.open.model.AnswerVo;
 import com.liuhq.open.model.ChooseVo;
 import com.liuhq.open.model.CourseVo;
+import com.liuhq.open.model.HeaderVo;
 import com.liuhq.open.util.LoginUtils;
 import com.liuhq.open.util.RequestUrlEnum;
 import com.liuhq.open.util.WebClientFactory;
+import com.liuhq.open.util.WebRequestFactory;
 
 public class OpenService {
 
 	private WebClient client = WebClientFactory.getInstance();
 
+	/**
+	 * 自动答题
+	 */
 	@SuppressWarnings("serial")
 	public void autoAnswer() {
 		// 剩余未完成作业
-		List<CourseVo> courseList = getOnlineJsonAll().stream().filter(course -> {
-			return StringUtils.isNotBlank(course.getStudentHomeworkId());
-		}).collect(Collectors.<CourseVo>toList());
+		List<CourseVo> courseList = getOnlineJsonAll().stream()
+				.filter(course -> StringUtils.isNotBlank(course.getStudentHomeworkId()))
+				.collect(Collectors.<CourseVo>toList());
 		courseList.forEach(course -> {
 			System.out.println(course);
 			List<AnswerVo> answerList = getHomework(course.getStudentHomeworkId());
 			Map<String, List<Object>> answerQuestionMap = Maps.<String, List<Object>>newHashMap();
 			List<Object> answerQuestionList = Lists.<Object>newArrayList();
 			answerList.forEach(answer -> {
+				// 获取答案
+				List<String> key = getAnswerKey(answer.getItemBankId(), answer.getAnswerId());
 				System.out.println(answer);
+				System.out.println("答案:" + key);
 				System.out.println("--------------");
 				answerQuestionList.add(new HashMap<String, Object>() {
 					{
 						put("I1", answer.getAnswerId());
-						put("I15", getAnswerKey(answer.getItemBankId(), answer.getAnswerId()));
+						put("I15", key);
 						put("Sub", Arrays.asList());
 					}
 				});
@@ -75,56 +83,49 @@ public class OpenService {
 		});
 	}
 
-//	
+	/**
+	 * 获取所有作业
+	 */
 	public List<CourseVo> getOnlineJsonAll() {
 		List<CourseVo> list = Lists.<CourseVo>newArrayList();
 		try {
-			WebRequest request = new WebRequest(new URL(RequestUrlEnum.GET_ONLINE_JSON_ALL.getUrl()),
-					RequestUrlEnum.GET_ONLINE_JSON_ALL.getMethod());
-			UnexpectedPage page = client.getPage(request);
+			UnexpectedPage page = client.getPage(WebRequestFactory.getInstance(RequestUrlEnum.GET_ONLINE_JSON_ALL));
 			String result = page.getWebResponse().getContentAsString();
 			JSONArray dataJSONArray = JSONObject.parseObject(result).getJSONArray("data");
-			for (int i = 0; i < dataJSONArray.size(); i++) {
-				JSONObject data = dataJSONArray.getJSONObject(i);
-				String courseName = data.getString("CourseName");
-				JSONArray detailJSONArray = data.getJSONArray("Data");
-				for (int j = 0; j < detailJSONArray.size(); j++) {
-					JSONObject detail = detailJSONArray.getJSONObject(j);
-					String exerciseName = detail.getString("ExerciseName");
-					String studentHomeworkId = detail.getString("studentHomeworkId");
-					list.add(CourseVo.builder().courseName(courseName).exerciseName(exerciseName)
-							.studentHomeworkId(studentHomeworkId).build());
-				}
-			}
+			dataJSONArray.stream().map(dataJSON -> JSONObject.parseObject(JSON.toJSONString(dataJSON)))
+					.forEach(data -> {
+						JSONArray detailJSONArray = data.getJSONArray("Data");
+						detailJSONArray.stream()
+								.map(detailJSON -> JSONObject.parseObject(JSON.toJSONString(detailJSON)))
+								.forEach(detail -> {
+									list.add(CourseVo.builder().courseName(data.getString("CourseName"))
+											.exerciseName(detail.getString("ExerciseName"))
+											.studentHomeworkId(detail.getString("studentHomeworkId")).build());
+								});
+					});
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 		return list;
 	}
 
-	@SuppressWarnings("serial")
+	/**
+	 * 获取所有题目
+	 */
 	public List<AnswerVo> getHomework(String studentHomeworkId) {
 		List<AnswerVo> answerList = Lists.<AnswerVo>newArrayList();
 		try {
-			WebRequest request = new WebRequest(new URL(RequestUrlEnum.GET_HOMEWORK.getUrl()),
-					RequestUrlEnum.GET_HOMEWORK.getMethod());
-			request.setRequestParameters(
-					Lists.<NameValuePair>newArrayList(new NameValuePair("studentHomeworkId", studentHomeworkId)));
-			request.setAdditionalHeaders(new HashMap<String, String>() {
-				{
-					put("Accept", "application/json, text/plain, */*");
-					put("appType", "OES");
-					put("schoolId", LoginUtils.getUniversityInfo().getUniversityId());
-					put("Sec-Fetch-Mode", "cors");
-					put("Authorization", "Bearer " + LoginUtils.getToken());
-				}
-			});
-			Page page = client.getPage(request);
+			Page page = client.getPage(WebRequestFactory.getInstance(RequestUrlEnum.GET_HOMEWORK,
+					Lists.<NameValuePair>newArrayList(new NameValuePair("studentHomeworkId", studentHomeworkId)), null,
+					HeaderVo.builder().name("Accept").value("application/json, text/plain, */*").build(),
+					HeaderVo.builder().name("appType").value("OES").build(),
+					HeaderVo.builder().name("schoolId").value(LoginUtils.getUniversityInfo().getUniversityId()).build(),
+					HeaderVo.builder().name("Sec-Fetch-Mode").value("cors").build(),
+					HeaderVo.builder().name("Authorization").value("Bearer " + LoginUtils.getToken()).build()));
 			String result = page.getWebResponse().getContentAsString();
 			JSONObject data = JSONObject.parseObject(result).getJSONObject("data");
 			JSONArray items = data.getJSONObject("paperInfo").getJSONArray("Items");
-			for (int i = 0; i < items.size(); i++) {
-				JSONObject item = items.getJSONObject(i);
+			items.stream().map(item -> JSONObject.parseObject(JSON.toJSONString(item))).forEach(item -> {
 				JSONArray choices = item.getJSONArray("Choices");
 				List<ChooseVo> chooseList = Lists.<ChooseVo>newArrayList();
 				for (int j = 0; j < choices.size(); j++) {
@@ -137,35 +138,11 @@ public class OpenService {
 								data.getJSONObject("paperInfo").getJSONArray("Items").getJSONObject(0).getString("I4"))
 						.workAnswerId(data.getString("workAnswerId")).answerId(item.getString("I1"))
 						.question(item.getString("I2")).chooseList(chooseList).build());
-			}
+			});
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 		return answerList;
-	}
-
-	private void answerQuestion(String workAnswerId, Map<String, List<Object>> answerMap) {
-		try {
-			WebRequest request = new WebRequest(
-					new URL(RequestUrlEnum.GET_HOMEWORK_ANSWERS.getUrl() + "?id=" + workAnswerId),
-					RequestUrlEnum.GET_HOMEWORK_ANSWERS.getMethod());
-//			request.setRequestParameters(Lists.<NameValuePair>newArrayList(
-//				new NameValuePair("id", workAnswerId)
-//					));
-			request.setRequestBody(JSON.toJSONString(answerMap));
-			request.setAdditionalHeaders(new HashMap<String, String>() {
-				{
-					put("Accept", "application/json, text/plain, */*");
-					put("appType", "OES");
-					put("Authorization", "Bearer " + LoginUtils.getToken());
-					put("Content-Type", "application/json");
-					put("schoolId", LoginUtils.getUniversityInfo().getUniversityId());
-				}
-			});
-			Page page = client.getPage(request);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
 	}
 
 	@SuppressWarnings("serial")
@@ -195,11 +172,10 @@ public class OpenService {
 
 	public List<String> getAnswerKey(String itemBankId, String questionId) {
 		try {
-			WebRequest request = new WebRequest(
-					new URL(RequestUrlEnum.GET_QUESTION_DETAIL.getUrl() + "?itemBankId=" + itemBankId + "&questionId="
-							+ questionId + "&_=" + System.currentTimeMillis()),
-					RequestUrlEnum.GET_QUESTION_DETAIL.getMethod());
-			Page page = client.getPage(request);
+			Page page = client.getPage(WebRequestFactory.getInstance(RequestUrlEnum.GET_QUESTION_DETAIL,
+					Lists.<NameValuePair>newArrayList(new NameValuePair("itemBankId", itemBankId),
+							new NameValuePair("questionId", questionId),
+							new NameValuePair("_", String.valueOf(System.currentTimeMillis())))));
 			String result = page.getWebResponse().getContentAsString();
 			return JSONObject.parseObject(result).getJSONObject("data").getJSONArray("I7").toJavaList(String.class);
 		} catch (Exception e) {
