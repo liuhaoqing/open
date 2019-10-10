@@ -1,9 +1,11 @@
 package com.liuhq.open.service;
 
-import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.Objects;
 
-import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import com.alibaba.fastjson.JSONObject;
@@ -35,10 +37,10 @@ public class LoginService {
 			WxParamterVo vo = getWeiXinCode();
 			QrCodeVo imgInfo = getWxImageInfo(vo);
 			// 二维码存到本地
-			FileOutputStream fos = new FileOutputStream(filePath);
-			IOUtils.write(IOUtils.toByteArray(client.getPage("https://open.weixin.qq.com" + imgInfo.getQrCodeImgSrc())
-					.getWebResponse().getContentAsStream()), fos);
-			fos.close();
+			InputStream img = client.getPage("https://open.weixin.qq.com" + imgInfo.getQrCodeImgSrc()).getWebResponse()
+					.getContentAsStream();
+			Files.copy(img, Paths.get(filePath), StandardCopyOption.REPLACE_EXISTING);
+			img.close();
 			// 打开图片
 			Runtime.getRuntime().exec("cmd /c " + filePath);
 			// 轮询获取wxCode参数
