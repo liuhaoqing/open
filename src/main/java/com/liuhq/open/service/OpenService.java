@@ -91,7 +91,7 @@ public class OpenService {
 		try {
 			UnexpectedPage page = client.getPage(WebRequestFactory.getInstance(RequestUrlEnum.GET_ONLINE_JSON_ALL));
 			String result = page.getWebResponse().getContentAsString();
-			JSONArray dataJSONArray = JSONObject.parseObject(result).getJSONArray("data");
+			JSONArray dataJSONArray = JSONObject.parseObject(result).getJSONObject("data").JSONArray("listWork");
 			dataJSONArray.stream().map(dataJSON -> JSONObject.parseObject(JSON.toJSONString(dataJSON)))
 					.forEach(data -> data.getJSONArray("Data").stream()
 							.map(detailJSON -> JSONObject.parseObject(JSON.toJSONString(detailJSON)))
