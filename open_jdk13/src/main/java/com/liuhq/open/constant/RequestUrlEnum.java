@@ -14,7 +14,7 @@ public enum RequestUrlEnum {
 	GET_USERINFO("http://learn.open.com.cn/StudentCenter/user/getuserinfo", HttpMethod.GET),
 	GET_ONLINE_JSON_ALL("http://learn.open.com.cn/StudentCenter/MyWork/GetOnlineJsonAll", HttpMethod.GET),
 	GET_HOMEWORK("https://homeworkapi.open.com.cn/getHomework", HttpMethod.GET),
-	GET_UNIVERSITY_CODE("http://learn.open.com.cn/StudentCenter/MyWork/GetUniversityCode", HttpMethod.GET),
+	GET_UNIVERSITY_CODE("http://learn.open.com.cn/StudentCenter/MyWork/GetUniversityCode?courseId=0", HttpMethod.GET),
 	SIGN_CONTROLLER("https://homeworkapi.open.com.cn/signController", HttpMethod.POST),
 	GET_QUESTION_DETAIL("http://learn.open.com.cn/StudentCenter/OnlineJob/GetQuestionDetail", HttpMethod.GET),
 	GET_HOMEWORK_ANSWERS("https://homeworkapi.open.com.cn/getHomeworkAnswers", HttpMethod.POST),
