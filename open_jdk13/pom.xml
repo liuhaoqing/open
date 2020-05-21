@@ -12,7 +12,7 @@
 		<lombok.version>1.18.10</lombok.version>
 		<fastjson.version>1.2.61</fastjson.version>
 		<commons-lang3.version>3.9</commons-lang3.version>
-		<htmlunit.version>2.36.0</htmlunit.version>
+		<htmlunit.version>2.37.0</htmlunit.version>
 	</properties>
 
 	<dependencies>
